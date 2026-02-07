@@ -2,7 +2,7 @@
 ### Performance + UI/UX improvements:
 - Previously, bulk updating transactions involved [calling Prisma’s `update()` function inside of a for-loop](https://github.com/JonSchwartz93/interview-assessment/blob/main/src/app/api/transactions/bulk/route.ts#L21). This meant that when you click "Mark # Reviewed", we would then individually update the transactions by `transactionId` which made for a super laggy, slow user experience. Instead, we can leverage Prisma’s `updateMany()` function to update the DB in one-shot vs. one time/`transactionId`
 - We are still fetching all transaction on initial page-load, but to improve the overall frontend user experience, I've added client-side pagination so that you are able to view 20 transactions at a time. Additionally, you can only update those 20 transactions which avoids the incredibly slow page update when trying to update all transactions. 
-- Calculate "stats" on the backend and return them with the ``GET api/transactions?caseId=[caseId]` call
+- Calculate "stats" on the backend and return them with the `GET api/transactions?caseId=[caseId]` call
 - Improve checkbox state updating and allow users to select anywhere within a row to update the checkbox and mark a transaction as "selected"
 
 ###  Future improvements:
