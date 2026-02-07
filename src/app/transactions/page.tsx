@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -85,6 +85,15 @@ export default function TransactionsPage() {
   const [selectedCaseId, setSelectedCaseId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [stats, setStats] = useState({
+    total: 0,
+    reviewed: 0,
+    flagged: 0,
+    uncategorized: 0,
+    income: 0,
+    expenses: 0,
+  });
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,9 +108,14 @@ export default function TransactionsPage() {
   // Fetch transactions when case changes
   useEffect(() => {
     if (selectedCaseId) {
+      setPage(1);
       fetchTransactions();
     }
   }, [selectedCaseId]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page]);
 
   const fetchCases = async () => {
     try {
@@ -121,7 +135,9 @@ export default function TransactionsPage() {
     try {
       const response = await fetch(`/api/transactions?caseId=${selectedCaseId}`);
       const data = await response.json();
-      setTransactions(data);
+      setTransactions(data.transactions);
+      setStats(data.stats);
+      setPage(1);
     } catch (error) {
       console.error("Failed to fetch transactions:", error);
     } finally {
@@ -130,48 +146,40 @@ export default function TransactionsPage() {
   };
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
+    return transactions.filter((transaction) => {
       // Search filter
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        if (!t.description.toLowerCase().includes(term)) {
+        if (!transaction.description.toLowerCase().includes(term)) {
           return false;
         }
       }
 
       // Category filter
-      if (categoryFilter !== "ALL" && t.category !== categoryFilter) {
+      if (categoryFilter !== "ALL" && transaction.category !== categoryFilter) {
         return false;
       }
 
       // Status filter
-      if (statusFilter === "reviewed" && !t.isReviewed) return false;
-      if (statusFilter === "unreviewed" && t.isReviewed) return false;
-      if (statusFilter === "flagged" && !t.isFlagged) return false;
+      if (statusFilter === "reviewed" && !transaction.isReviewed) return false;
+      if (statusFilter === "unreviewed" && transaction.isReviewed) return false;
+      if (statusFilter === "flagged" && !transaction.isFlagged) return false;
 
       return true;
     });
   }, [transactions, searchTerm, categoryFilter, statusFilter]);
 
-  const stats = useMemo(() => {
-    const total = transactions.length;
-    const reviewed = transactions.filter((t) => t.isReviewed).length;
-    const flagged = transactions.filter((t) => t.isFlagged).length;
-    const uncategorized = transactions.filter((t) => t.category === "UNCATEGORIZED").length;
+  const paginatedTransactions = useMemo(() => {
+    const start = (page - 1) * 20;
+    const end = start + 20;
+    return filteredTransactions.slice(start, end);
+  }, [filteredTransactions, page]);
 
-    const income = transactions
-      .filter((t) => t.amountInCents > 0)
-      .reduce((sum, t) => sum + t.amountInCents, 0);
-    const expenses = transactions
-      .filter((t) => t.amountInCents < 0)
-      .reduce((sum, t) => sum + Math.abs(t.amountInCents), 0);
-
-    return { total, reviewed, flagged, uncategorized, income, expenses };
-  }, [transactions]);
+  const totalPages = Math.ceil(filteredTransactions.length / 20);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(filteredTransactions.map((t) => t.id)));
+      setSelectedIds(new Set(paginatedTransactions.map((t) => t.id)));
     } else {
       setSelectedIds(new Set());
     }
@@ -217,7 +225,6 @@ export default function TransactionsPage() {
         body: JSON.stringify({ category }),
       });
 
-      // Refetch all transactions
       await fetchTransactions();
     } catch (error) {
       console.error("Failed to update category:", error);
@@ -493,8 +500,8 @@ export default function TransactionsPage() {
                     <th className="pb-3 text-left">
                       <Checkbox
                         checked={
-                          selectedIds.size === filteredTransactions.length &&
-                          filteredTransactions.length > 0
+                          selectedIds.size === paginatedTransactions.length &&
+                          paginatedTransactions.length > 0
                         }
                         onChange={(e) => handleSelectAll(e.target.checked)}
                       />
@@ -520,7 +527,7 @@ export default function TransactionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTransactions.map((transaction) => (
+                  {paginatedTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
                       className={cn(
@@ -627,6 +634,25 @@ export default function TransactionsPage() {
                   ))}
                 </tbody>
               </table>
+              <div className="flex items-center justify-between pt-4 border-t mt-4">
+                <Button 
+                  onClick={() => setPage(page - 1)} 
+                  disabled={page === 1 || isLoading}
+                  variant="outline"
+                  size="sm"
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600">Page {page} of {totalPages || 1}</span>
+                <Button 
+                  onClick={() => setPage(page + 1)} 
+                  disabled={page >= totalPages || isLoading}
+                  variant="outline"
+                  size="sm"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
