@@ -178,13 +178,15 @@ export default function TransactionsPage() {
   };
 
   const handleSelectOne = (id: string, checked: boolean) => {
-    const newSelected = new Set(selectedIds);
-    if (checked) {
-      newSelected.add(id);
-    } else {
-      newSelected.delete(id);
-    }
-    setSelectedIds(newSelected);
+    setSelectedIds((prev) => {
+      const newSelected = new Set(prev);
+      if (checked) {
+        newSelected.add(id);
+      } else {
+        newSelected.delete(id);
+      }
+      return newSelected;
+    });
   };
 
   const handleBulkMarkReviewed = async () => {
@@ -522,9 +524,16 @@ export default function TransactionsPage() {
                     <tr
                       key={transaction.id}
                       className={cn(
-                        "border-b last:border-0 hover:bg-gray-50",
+                        "border-b last:border-0 hover:bg-gray-50 cursor-pointer",
                         transaction.isFlagged && "bg-red-50 hover:bg-red-100"
                       )}
+                      onClick={(e) => {
+                        // Don't toggle if clicking on interactive elements
+                        if ((e.target as HTMLElement).closest("button, [role='button'], select")) {
+                          return;
+                        }
+                        handleSelectOne(transaction.id, !selectedIds.has(transaction.id));
+                      }}
                     >
                       <td className="py-3">
                         <Checkbox
