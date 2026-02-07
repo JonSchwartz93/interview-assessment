@@ -135,8 +135,11 @@ export async function sendNotificationStep(context: OrderContext): Promise<StepR
 
   if (!notificationResult.sent) {
     return {
-      success: false,
-      error: notificationResult.error || 'Failed to send notification',
+      success: true,
+      data: {
+        notificationSent: false,
+        notificationError: notificationResult.error || 'Failed to send notification',
+      },
     };
   }
 
