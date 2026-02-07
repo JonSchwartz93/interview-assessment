@@ -55,7 +55,7 @@ export async function checkInventoryStep(context: OrderContext): Promise<StepRes
 
   const result = await withRetry(
     () => simulateExternalInventoryService(context.items),
-    3
+    5
   );
   
   if (result.available) {
