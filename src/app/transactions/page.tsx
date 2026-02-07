@@ -191,15 +191,15 @@ export default function TransactionsPage() {
     if (selectedIds.size === 0) return;
 
     try {
-      const promises = Array.from(selectedIds).map((id) =>
-        fetch(`/api/transactions/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isReviewed: true }),
-        })
-      );
+      await fetch("/api/transactions/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          updates: { isReviewed: true },
+        }),
+      });
 
-      await Promise.all(promises);
       await fetchTransactions();
       setSelectedIds(new Set());
     } catch (error) {
