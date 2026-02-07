@@ -79,7 +79,7 @@ export async function processPaymentStep(context: OrderContext): Promise<StepRes
 
   const paymentResult = await simulatePaymentGateway(context.totalAmount, context.customerId);
 
-  if (!paymentResult.success) {
+  if (paymentResult.success) {
     return {
       success: true,
       data: {
