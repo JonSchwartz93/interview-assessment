@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ============================================================================
+// TRANSACTION MODELS
+// ============================================================================
+
+// TransactionCategory:
+//   Income: SOCIAL_SECURITY, SSI, PENSION, VETERANS_BENEFITS, INTEREST_DIVIDENDS
+//   Assets: HEALTH_INSURANCE, LIFE_INSURANCE, UTILITIES, VEHICLE_EXPENSES
+//   Transfers: INTERNAL_TRANSFER, EXTERNAL_TRANSFER, ATM_WITHDRAWAL, CHECK, DEPOSIT
+//   Other: GROCERIES, MEDICAL, ENTERTAINMENT, OTHER, UNCATEGORIZED
+
+model FinancialTransaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  date          DateTime
+  description   String
+  amountInCents Int    @map("amount_in_cents")
+  category      String @default("UNCATEGORIZED")
+
+  // Review status
+  isReviewed Boolean @default(false) @map("is_reviewed")
+  isFlagged  Boolean @default(false) @map("is_flagged")
+  flagReason String? @map("flag_reason")
+  reviewNote String? @map("review_note")
+
+  // Source info
+  accountLastFour String? @map("account_last_four")
+
+  // Relations
+  caseId String @map("case_id")
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([date])
+  @@index([category])
+  @@index([isReviewed])
+  @@index([isFlagged])
+  @@map("financial_transaction")
+}
+
+// ============================================================================
+// CASE MODEL
+// ============================================================================
+
+// CaseStatus: DRAFT, IN_PROGRESS, SUBMITTED, APPROVED, DENIED
+
+model Case {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  residentName String @map("resident_name")
+  facilityName String @map("facility_name")
+  status       String @default("DRAFT")
+
+  // Relations
+  transactions FinancialTransaction[]
+
+  @@map("case")
+}
