@@ -53,19 +53,21 @@ export async function checkInventoryStep(context: OrderContext): Promise<StepRes
   // Simulate API call delay
   await sleep(200);
 
-  // Simulate external service that sometimes fails
-  const externalServiceCall = await simulateExternalInventoryService(context.items);
+  const result = await withRetry(
+    () => simulateExternalInventoryService(context.items),
+    3
+  );
   
-  if (!externalServiceCall.available) {
+  if (result.available) {
     return {
-      success: false,
-      error: externalServiceCall.error || 'Inventory check failed',
+      success: true,
+      data: { inventoryChecked: true },
     };
   }
 
   return {
-    success: true,
-    data: { inventoryChecked: true },
+    success: false,
+    error: result.error || 'Inventory check failed',
   };
 }
 
@@ -148,6 +150,31 @@ export async function sendNotificationStep(context: OrderContext): Promise<StepR
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withRetry<T extends { available?: boolean; error?: string }>(
+  workflowStepToSimulate: () => Promise<T>,
+  maxAttempts = 3
+): Promise<T> {
+  let lastResult: T | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const result = await workflowStepToSimulate();
+    lastResult = result;
+
+    // If the call succeeded, return immediately
+    if (result.available) {
+      return result;
+    }
+
+    // Exponential backoff between retries
+    if (attempt < maxAttempts) {
+      await sleep(100 * Math.pow(2, attempt - 1));
+    }
+  }
+
+  // Return the last result (which failed)
+  return lastResult!;
 }
 
 /**
