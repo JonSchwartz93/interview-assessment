@@ -22,7 +22,20 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(transactions);
+    const stats = {
+      total: transactions.length,
+      reviewed: transactions.filter((transaction) => transaction.isReviewed).length,
+      flagged: transactions.filter((transaction) => transaction.isFlagged).length,
+      uncategorized: transactions.filter((transaction) => transaction.category === "UNCATEGORIZED").length,
+      income: transactions
+        .filter((transaction) => transaction.amountInCents > 0)
+        .reduce((sum, transaction) => sum + transaction.amountInCents, 0),
+      expenses: transactions
+        .filter((transaction) => transaction.amountInCents < 0)
+        .reduce((sum, transaction) => sum + Math.abs(transaction.amountInCents), 0),
+    };
+
+    return NextResponse.json({ transactions, stats });
   } catch (error) {
     console.error("Failed to fetch transactions:", error);
     return NextResponse.json(
